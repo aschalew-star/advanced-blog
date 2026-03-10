@@ -1,6 +1,6 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { registerAction, type RegisterState } from "./actions";
@@ -22,17 +22,11 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function SignUpPage({
-  searchParams,
-}: {
-  searchParams: { callbackUrl?: string };
-}) {
-  const callbackUrl = searchParams.callbackUrl ?? "/dashboard";
+export default function SignUpPage() {
 
   // Server action state
-  const [state, formAction] = useFormState<RegisterState, FormData>(registerAction, {
+  const [state, formAction,pending] = useActionState<RegisterState, FormData>(registerAction, {
     errors: {},
-    message: null,
   });
 
   const {
@@ -69,12 +63,8 @@ export default function SignUpPage({
     }
   }, [state?.success, reset]);
 
-  const { pending } = useFormStatus();
 
-  const onSubmit = handleSubmit((data) => {
-    // We don't need to do anything here — formAction handles submission
-    // react-hook-form just validates before submit
-  });
+  
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
@@ -84,9 +74,9 @@ export default function SignUpPage({
         </CardHeader>
 
         <CardContent>
-          <form action={formAction} onSubmit={onSubmit} className="space-y-5">
+          <form action={formAction} className="space-y-5">
             {/* Hidden field for redirect */}
-            <input type="hidden" name="redirectTo" value={callbackUrl} />
+            {/* <input type="hidden" name="redirectTo" value={callbackUrl} /> */}
 
             {/* Name */}
             <div>

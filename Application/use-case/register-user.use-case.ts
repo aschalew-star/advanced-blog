@@ -1,4 +1,4 @@
-import {prisma-user-repository} from "@/Infrastructure/prisma/repositories/prisma-user.repository";
+import {PrismaUserRepository} from "@/infrastructure/database/prisma-user-repository";
 import { UserRepository } from "../ports/user-repository.port";
 import {User} from "@/domain/entities/user";
 import bcrypt from "bcryptjs";                  
