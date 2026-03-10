@@ -3,7 +3,7 @@
 import { useFormState, useFormStatus } from "react-dom";
 import { useEffect } from "react";
 import { toast } from "sonner";
-// import { registerAction, type RegisterState } from "@/features/auth/actions/register";
+import { registerAction, type RegisterState } from "@/features/auth/actions/registerAction";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,10 +30,10 @@ export default function SignUpPage({
 }) {
   const callbackUrl = searchParams.callbackUrl ?? "/dashboard";
 
-//   const [state, formAction] = useFormState<RegisterState, FormData>(
-//     registerAction,
-//     {}
-//   );
+  const [state, formAction] = useFormState<RegisterState, FormData>(
+    registerAction,
+    {}
+  );
 
   const {
     register,
@@ -42,11 +42,11 @@ export default function SignUpPage({
     resolver: zodResolver(formSchema),
   });
 
-//   useEffect(() => {
-//     if (state.errors?.general) {
-//       toast.error(state.errors.general);
-//     }
-//   }, [state.errors?.general]);
+  useEffect(() => {
+    if (state.errors?.general) {
+      toast.error(state.errors.general);
+    }
+  }, [state.errors?.general]);
 
   const { pending } = useFormStatus();
 
