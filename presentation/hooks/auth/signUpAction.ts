@@ -1,36 +1,98 @@
+'use server';
+import {z} from "zod";
+import {redirect} from "next/navigation";
+import {cookies} from "next/headers";
+import prisma from "@/lib/prisma";
+import bcrypt from "bcryptjs";
 
-"use server";
 
-import { SignUpUseCase } from "@/application/auth/use-cases/SignUpUseCase";
-import { PrismaUserRepository } from "@/infrastructure/persistence/prisma/PrismaUserRepository";
-import { BcryptHashService } from "@/infrastructure/hashing/BcryptHashService";
-import { signIn } from "@/app/api/auth/[...nextauth]/route";
-import { redirect } from "next/navigation";
 
-const useCase = new SignUpUseCase(
-  new PrismaUserRepository(),
-  new BcryptHashService()
-);
+const registerSchema=z.object({
+  name:z.string().min(2,"Name must be at least 2 characters"),
+  email:z.string().email("Please enter a valid email"),
+  password:z.string().min(6,"Password must be at least 6 characters"),
+  redirectTo:z.string().optional(), 
+});
 
-export async function signUpAction(formData: FormData) {
-  const input = {
-    name: formData.get("name") as string,
-    email: formData.get("email") as string,
-    password: formData.get("password") as string,
+export type RegisterState = {
+  success?: boolean;
+  errors?: {
+    general?: string;
+    email?: string;
+    password?: string;
+    redirectTo?: string;
   };
+};
 
-  const result = await useCase.execute(input);
+async function createUser(data:{name: string, email: string, password: string}) {
+  const {name,email,password}=data;
 
-  if (!result.success) {
-    return { error: result.error }; // or throw new Error(...)
+  // Check if user already exists
+  const existingUser = await prisma.user.findUnique({ where: { email } });
+  if (existingUser) {
+    throw new Error('Email is already registered');
   }
 
-  // Auto sign-in (framework concern → stays in outer layer)
-  await signIn("credentials", {
-    email: input.email,
-    password: input.password,
-    redirect: false,
+  // Hash password
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  // Create user in DB
+  const user = await prisma.user.create({
+    data: {
+      name,
+      email,
+      password: hashedPassword,
+    },
   });
 
-  redirect("/dashboard");
+  return user;
+}
+
+export async function registerAction(prevState: RegisterState, formData: FormData): Promise<RegisterState> {
+  try {
+    const data = {
+      name:formData.get("name")?.toString() || "",
+      email:formData.get("email")?.toString() || "",
+      password:formData.get("password")?.toString() || "",
+      redirectTo:formData.get("redirectTo")?.toString() || "/dashboard",
+    };
+    
+    // Validate input
+      const parsed = registerSchema.safeParse(data);
+      if (!parsed.success){
+        const fieldErrors = parsed.error.flatten().fieldErrors;
+
+        return {
+          success:false,
+          errors:{
+            name:fieldErrors.name?.[0],
+            email:fieldErrors.email?.[0],
+            password:fieldErrors.password?.[0],
+          },
+        };
+      }
+
+    // Create user
+    const user = await createUser(data);
+    
+    // Set cookie (example, adjust as needed for your auth strategy)
+    (await
+      // Set cookie (example, adjust as needed for your auth strategy)
+      cookies()).set("session", "fake-jwt-token-for-user-"+user.id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 60 * 60 * 24 * 7, // 1 week
+      path: "/",
+    });
+    
+    // Redirect to dashboard or specified URL
+    redirect(data.redirectTo);
+  } catch (error: any) {
+    return {
+      success: false,
+      errors: {
+        general: error.message || "An unexpected error occurred",
+      },
+    };
+  }
 }
