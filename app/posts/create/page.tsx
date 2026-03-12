@@ -1,72 +1,209 @@
-// app/(app)/posts/create/page.tsx
-'use client';
+// app/posts/create-post-modal.tsx   ← or wherever you place it
+"use client"
 
-import { trpc } from '@/lib/trpc/trpc.client';
-import { useRouter } from 'next/navigation';
-// import { NovelEditor } from '@/components/editor/NovelEditor'; // your wrapper
+import { useState } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+import { useActionState } from "react" // or useFormState if older React
+import { createPostAction } from "./post-action" // your server action
 
-export default function CreatePostPage() {
-  const router = useRouter();
-  const createMutation = trpc.post.create.useMutation({
-    onSuccess: (data) => {
-      router.push(`/posts/${data.slug}`);
+import { Button } from "@/presentation/components/ui/button"
+import { Input } from "@/presentation/components/ui/input"
+import { Textarea } from "@/presentation/components/ui/textarea"
+import { Label } from "@/presentation/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/presentation/components/ui/dialog"
+import { Loader2, Send, X } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import { useToast } from "@/presentation/components/ui/use-toast"
+
+// ── Schema & Types ────────────────────────────────────────
+const postSchema = z.object({
+  title: z.string().min(1, "Title is required").max(100, "Title too long"),
+  content: z.string().min(1, "Content is required").max(5000, "Too long"),
+  authorId: z.number().int().positive(),
+})
+
+type FormValues = z.infer<typeof postSchema>
+
+type PostResponse =
+  | { success: true; post: { id: number; title: string; slug: string } }
+  | { success: false; error: string }
+
+// ── Main Component ─────────────────────────────────────────
+export function CreatePostModal() {
+  const [open, setOpen] = useState(false)
+  const { toast } = useToast()
+
+  const [state, formAction, isPending] = useActionState<PostResponse, FormData>(
+    createPostAction,
+    { success: false, error: "Something went wrong" }
+  )
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    watch,
+    reset,
+  } = useForm<FormValues>({
+    resolver: zodResolver(postSchema),
+    defaultValues: {
+      title: "",
+      content: "",
+      authorId: 1, // ← in real app: get from session/auth
     },
-  });
+  })
 
-  const handleSubmit = (title: string, content: any) => {
-    createMutation.mutate({
-      title,
-      content,
-      // authorId auto from session
-    });
-  };
+  const contentValue = watch("content") || ""
+  const charCount = contentValue.length
+  const maxChars = 280 // tweet-like feel (or change to 5000)
 
-  return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-3xl mb-6">Create New Post</h1>
-      
-      {/* Title input + Novel editor */}
-      {/* ... form logic to collect title + call handleSubmit on publish */}
-      
-      {createMutation.isPending && <p>Saving...</p>}
-      {createMutation.error && <p className="text-red-500">{createMutation.error.message}</p>}
-    </div>
-  );
-}
+  // Handle success/error from server action
+  // (runs after action completes)
+  if (state.success && open) {
+    toast({
+      title: "Post created!",
+      description: `Your post "${state.post?.title}" is live.`,
+    })
+    reset()
+    setOpen(false)
+  }
 
-// Example: src/components/editor/NovelEditor.tsx (simplified)
-'use client';
-
-import { Editor } from 'novel';
-import { generateUploadButton } from '@uploadthing/react';
-import { useState } from 'react';
-
-const UploadButton = generateUploadButton<OurFileRouter>();
-
-function NovelEditor({ onChange }: { onChange: (json: any) => void }) {
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-
-  const handleImageUpload = async (file: File) => {
-    // Use UploadThing uploader
-    const uploaded = await uploadFiles({
-      files: [file],
-      endpoint: 'imageUploader',
-    });
-    return uploaded[0]?.url ?? '';
-  };
+  if (!state.success && state.error && open && !isPending) {
+    toast({
+      variant: "destructive",
+      title: "Failed to create post",
+      description: state.error,
+    })
+  }
 
   return (
-    <Editor
-      // ... other props
-      onUpdate={({ editor }) => onChange(editor.getJSON())}
-      extensions={[
-        // TipTap Image extension with custom upload
-        Image.configure({
-          inline: true,
-          allowBase64: false,
-          uploadFn: handleImageUpload, // or your wrapper
-        }),
-      ]}
-    />
-  );
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="rounded-full px-6 py-6 text-base font-semibold shadow-lg hover:scale-105 transition-transform">
+          Create Post
+        </Button>
+      </DialogTrigger>
+
+      <DialogContent className="sm:max-w-[580px] p-0 overflow-hidden border-none shadow-2xl">
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="h-full"
+            >
+              <DialogHeader className="px-6 pt-6 pb-4 border-b bg-gradient-to-r from-slate-900 to-slate-800 text-white">
+                <div className="flex items-center justify-between">
+                  <DialogTitle className="text-2xl font-bold tracking-tight">
+                    Compose Post
+                  </DialogTitle>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-white hover:bg-white/10"
+                    onClick={() => setOpen(false)}
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+                <DialogDescription className="text-slate-300 mt-1">
+                  Share your thoughts with the world.
+                </DialogDescription>
+              </DialogHeader>
+
+              <form
+                action={formAction}
+                onSubmit={handleSubmit((data) => {
+                  // We still use handleSubmit for client validation
+                  // But submit via formAction (server action)
+                  const formData = new FormData()
+                  formData.append("title", data.title)
+                  formData.append("content", data.content)
+                  formData.append("authorId", data.authorId.toString())
+                  // submit via action (not needed manually — formAction does it)
+                })}
+                className="px-6 py-6 space-y-6 bg-gradient-to-b from-white to-slate-50 dark:from-slate-950 dark:to-slate-900"
+              >
+                {/* Hidden authorId */}
+                <input type="hidden" {...register("authorId")} value="1" />
+
+                <div className="space-y-2">
+                  <Label htmlFor="title" className="text-base font-medium">
+                    Title
+                  </Label>
+                  <Input
+                    id="title"
+                    placeholder="A catchy title..."
+                    className="text-lg transition-all focus:ring-2 focus:ring-blue-500"
+                    {...register("title")}
+                  />
+                  {errors.title && (
+                    <p className="text-red-500 text-sm mt-1.5">
+                      {errors.title.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2 relative">
+                  <Label htmlFor="content" className="text-base font-medium">
+                    Content
+                  </Label>
+                  <Textarea
+                    id="content"
+                    placeholder="Write something inspiring..."
+                    className="min-h-[180px] text-base resize-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    {...register("content")}
+                  />
+                  <div
+                    className={`absolute bottom-3 right-3 text-sm font-medium ${
+                      charCount > maxChars ? "text-red-500" : "text-slate-500"
+                    }`}
+                  >
+                    {charCount}/{maxChars}
+                  </div>
+                  {errors.content && (
+                    <p className="text-red-500 text-sm mt-1.5">
+                      {errors.content.message}
+                    </p>
+                  )}
+                </div>
+
+                <DialogFooter className="pt-4 border-t">
+                  <Button
+                    type="submit"
+                    disabled={isPending || charCount > maxChars}
+                    className="rounded-full px-8 py-6 text-base font-bold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+                  >
+                    {isPending ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        Posting...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-5 w-5" />
+                        Post Now
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </DialogContent>
+    </Dialog>
+  )
 }

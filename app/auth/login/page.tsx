@@ -20,6 +20,8 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect } from "react";
 import Link from "next/link";
+import { signIn } from "next-auth/react";
+import { loginAction, type LoginState } from "./loginaction";
 
 // Infer type from schema (same as server)
 const formSchema = z.object({
@@ -31,7 +33,6 @@ type FormValues = z.infer<typeof formSchema>;
 
 // Assuming loginAction is defined elsewhere and returns LoginState
 // e.g. { errors?: { general?: string; email?: string[]; password?: string[] }; ... }
-import { loginAction, type LoginState } from "./loginaction";
 
 export default function SignInPage() {
   const [state, formAction, pending] = useActionState<LoginState, FormData>(
@@ -65,6 +66,7 @@ export default function SignInPage() {
   }, [state.errors, setError]);
 
   
+  console.log(state.errors?.general)
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
@@ -127,17 +129,11 @@ export default function SignInPage() {
           </div>
 
           {/* Google Button – using Auth.js signIn */}
-          <form
-            action={async () => {
-            //   "use server";
-            //   await signIn("google", { callbackUrl: "/dashboard" });
-            }}
-          >
-            <Button variant="outline" className="w-full" type="submit">
+        
+            <Button variant="outline" className="w-full" onClick={()=>{signIn("google",{callbackUrl:"/dashboard"})}}>
               {/* ... your Google SVG ... */}
               Continue with Google
             </Button>
-          </form>
         </CardContent>
         <CardFooter className="flex flex-col items-center justify-center text-sm text-muted-foreground">
           <p>Don't have an account?</p>

@@ -1,14 +1,16 @@
-// src/domains/post/domain/entities/post.ts
+import { fromJSONSchema } from "zod";
 
 export interface PostProps {
-  id?: number;
-  slug: string;
+  id?: number;                  // Optional for new posts (before save)
   title: string;
-  content: any;               // JSON from Prisma
-  authorId: number;
-  views: number;
+  content: string;
+  authorId: number;             // Reference to User by ID
   createdAt: Date;
   updatedAt: Date;
+  
+  // Relations (references only – not full objects, to keep entity lightweight)
+  // In DDD, relations are often loaded on-demand via repository
+  // author?: User;              // optional – if needed for domain logic
 }
 
 export class Post {
@@ -17,36 +19,28 @@ export class Post {
   constructor(props: PostProps) {
     this.props = {
       ...props,
-      views: props.views ?? 0,
       createdAt: props.createdAt ?? new Date(),
       updatedAt: props.updatedAt ?? new Date(),
     };
 
-    this.validate();
+    this.validate(); // Enforce invariants
   }
 
+  // Getters (immutable access)
   get id(): number | undefined {
     return this.props.id;
-  }
-
-  get slug(): string {
-    return this.props.slug;
   }
 
   get title(): string {
     return this.props.title;
   }
 
-  get content(): any {
+  get content(): string {
     return this.props.content;
   }
 
   get authorId(): number {
     return this.props.authorId;
-  }
-
-  get views(): number {
-    return this.props.views;
   }
 
   get createdAt(): Date {
@@ -57,46 +51,37 @@ export class Post {
     return this.props.updatedAt;
   }
 
-  private validate(): void {
-    if (!this.props.slug || this.props.slug.length < 3) {
-      throw new Error('Slug must be at least 3 characters');
+  private validate() {
+    if (!this.props.title || this.props.title.trim() === '') {
+      throw new Error('Post title is required');
     }
-    if (!this.props.title || this.props.title.trim().length === 0) {
-      throw new Error('Title is required');
+    if (!this.props.content || this.props.content.trim() === '') {
+      throw new Error('Post content is required');
     }
-    if (this.props.content == null) {
-      throw new Error('Content cannot be null');
+    if (!this.props.authorId) {
+      throw new Error('Post must have an authorId');
     }
   }
-
-  incrementViews(): void {
-    this.props.views += 1;
-    this.props.updatedAt = new Date();
-  }
-
-  toJSON(): any {
+  
+  toJSON() {  
     return {
-      id: this.props.id,
-      slug: this.props.slug,
-      title: this.props.title,
-      content: this.props.content,
-      authorId: this.props.authorId,
-      views: this.props.views,
-      createdAt: this.props.createdAt,
-      updatedAt: this.props.updatedAt,
+      id: this.id,
+      title: this.title,
+      content: this.content,
+      authorId: this.authorId,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
     };
   }
 
-  static fromJSON(data: any): Post {
+  fromJSON(json: any): Post {
     return new Post({
-      id: data.id,
-      slug: data.slug,
-      title: data.title,
-      content: data.content,
-      authorId: data.authorId,
-      views: data.views ?? 0,
-      createdAt: new Date(data.createdAt),
-      updatedAt: new Date(data.updatedAt),
+      id: json.id,
+      title: json.title,
+      content: json.content,
+      authorId: json.authorId,
+      createdAt: new Date(json.createdAt),
+      updatedAt: new Date(json.updatedAt),
     });
-  }
-}
+  } 
+}   

@@ -82,7 +82,7 @@ export const authOptions = {
       return session;
     },
   },
-
+debug: true,
   secret: process.env.NEXTAUTH_SECRET,
   trustHost: true,
 };
