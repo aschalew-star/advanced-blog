@@ -26,6 +26,10 @@ async excute(data: LoginDTO): Promise<LoginResult> {
             return { success: false, error: 'Invalid email or password' };
         }
 
+        if (!user.password) {
+            return { success: false, error: 'Invalid email or password' };
+        }
+
         // Here you would normally compare the hashed password
         const isValid = await bcrypt.compare(data.password, user.password);
         if (!isValid) {

@@ -23,7 +23,7 @@ import {
 } from "@/presentation/components/ui/dialog"
 import { Loader2, Send, X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import { useToast } from "@/presentation/components/ui/use-toast"
+// import { useToast } from "@/presentation/components/ui/use-toast"
 
 // ── Schema & Types ────────────────────────────────────────
 const postSchema = z.object({
@@ -38,10 +38,9 @@ type PostResponse =
   | { success: true; post: { id: number; title: string; slug: string } }
   | { success: false; error: string }
 
-// ── Main Component ─────────────────────────────────────────
-export function CreatePostModal() {
-  const [open, setOpen] = useState(false)
-  const { toast } = useToast()
+// ── Main Component ─────────────────────────────────────────PostResponse
+export default function createPost({setOpen, open}: { setOpen: React.Dispatch<React.SetStateAction<boolean>> ,open: boolean}) {
+  // const { toast } = useToast()
 
   const [state, formAction, isPending] = useActionState<PostResponse, FormData>(
     createPostAction,
@@ -70,30 +69,24 @@ export function CreatePostModal() {
   // Handle success/error from server action
   // (runs after action completes)
   if (state.success && open) {
-    toast({
-      title: "Post created!",
-      description: `Your post "${state.post?.title}" is live.`,
-    })
+    // toast({
+    //   title: "Post created!",
+    //   description: `Your post "${state.post?.title}" is live.`,
+    // })
     reset()
     setOpen(false)
   }
 
   if (!state.success && state.error && open && !isPending) {
-    toast({
-      variant: "destructive",
-      title: "Failed to create post",
-      description: state.error,
-    })
+    // toast({
+    //   variant: "destructive",
+    //   title: "Failed to create post",
+    //   description: state.error,
+    // })
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="rounded-full px-6 py-6 text-base font-semibold shadow-lg hover:scale-105 transition-transform">
-          Create Post
-        </Button>
-      </DialogTrigger>
-
       <DialogContent className="sm:max-w-[580px] p-0 overflow-hidden border-none shadow-2xl">
         <AnimatePresence>
           {open && (

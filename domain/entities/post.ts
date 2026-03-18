@@ -1,4 +1,5 @@
 import { fromJSONSchema } from "zod";
+import { User } from "./user";
 
 export interface PostProps {
   id?: number;                  // Optional for new posts (before save)
@@ -7,10 +8,13 @@ export interface PostProps {
   authorId: number;             // Reference to User by ID
   createdAt: Date;
   updatedAt: Date;
-  
-  // Relations (references only – not full objects, to keep entity lightweight)
-  // In DDD, relations are often loaded on-demand via repository
-  // author?: User;              // optional – if needed for domain logic
+  author?: {
+    id: number;
+    name: string | null | undefined;
+    email: string | null | undefined;
+    image: string | null | undefined;
+    createdAt: Date;
+  };
 }
 
 export class Post {
@@ -82,6 +86,13 @@ export class Post {
       authorId: json.authorId,
       createdAt: new Date(json.createdAt),
       updatedAt: new Date(json.updatedAt),
+      author: json.author ? {
+        id: json.author.id,
+        name: json.author.name,
+        email: json.author.email,
+        image: json.author.image,
+        createdAt: new Date(json.author.createdAt),
+      } : undefined,
     });
   } 
 }   

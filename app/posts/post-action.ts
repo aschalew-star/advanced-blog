@@ -8,7 +8,7 @@ import { PostUseCase } from "@/Application/use-case/post-use-case";
 export async function createPostAction(formData: FormData) {
   const title = formData.get("title") as string;
   const content = formData.get("content") as string;
-  const authorId = Number(formData.get("authorId"));
+  const authorId = Number(formData.get("authorId")); 
 
   const postRepository = new PrismaPostRepository();
   const postUseCase = new PostUseCase(postRepository);

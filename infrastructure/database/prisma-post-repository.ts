@@ -1,6 +1,7 @@
 import { Post } from "@/domain/entities/post";
 import { PostRepository } from "@/Application/ports/post.repository.port";
 import prisma from "@/lib/prisma";
+import { Select } from "radix-ui";
 
 export class PrismaPostRepository implements PostRepository {
   async findById(id: number): Promise<Post | null> {
@@ -10,7 +11,18 @@ export class PrismaPostRepository implements PostRepository {
   }
 
   async findAll(): Promise<Post[]> {
-    const postRecords = await prisma.post.findMany();
+    const postRecords = await prisma.post.findMany({
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            createdAt: true,
+          },
+        },
+    },});
     return postRecords.map((record) => Post.fromJSON(record));
   }
 
